@@ -1,0 +1,25 @@
+services:
+  rag-parser:
+    env_file:
+      - ../.env
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: rag-parser
+    restart: unless-stopped
+
+    environment:
+      OUT_DIR: /data/knowledge_base
+      INTERVAL_SEC: "86400"
+      BASE_URL: "http://sniprf.ru/snip"
+      LIMIT_PAGES: "60"
+      SLEEP_SEC: "0.4"
+
+      CHUNK_CHARS: "1600"
+      CHUNK_OVERLAP: "250"
+
+      EMB_MODEL_NAME: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+      EMB_BATCH_SIZE: "32"
+
+    volumes:
+      - ../knowledge_base:/data/knowledge_base
