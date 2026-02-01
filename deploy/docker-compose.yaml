@@ -23,3 +23,14 @@ services:
 
     volumes:
       - ../knowledge_base:/data/knowledge_base
+  tg-bot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.tg
+    container_name: rag-tg-bot
+    command: ["python", "run_tg_bot.py"]
+    env_file:
+      - ../.env
+    volumes:
+      - ../knowledge_base:/data/knowledge_base
+    restart: unless-stopped

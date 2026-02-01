@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # python deps
 COPY src/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN pip install --no-cache-dir \
+    --default-timeout=300 --retries=10 \
+    -r /app/requirements.txt
 
 # app code
 COPY src/ /app/
