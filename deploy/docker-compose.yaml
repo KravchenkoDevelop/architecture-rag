@@ -7,22 +7,32 @@ services:
       dockerfile: deploy/Dockerfile
     container_name: rag-parser
     restart: unless-stopped
-
     environment:
       OUT_DIR: /data/knowledge_base
       INTERVAL_SEC: "86400"
       BASE_URL: "http://sniprf.ru/snip"
       LIMIT_PAGES: "60"
       SLEEP_SEC: "0.4"
-
       CHUNK_CHARS: "1600"
       CHUNK_OVERLAP: "250"
-
       EMB_MODEL_NAME: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
       EMB_BATCH_SIZE: "32"
-
     volumes:
       - ../knowledge_base:/data/knowledge_base
+    networks:
+      - ragnet
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    networks:
+      - ragnet
+    volumes:
+      - ../ollama:/root/.ollama
+
   tg-bot:
     build:
       context: ..
@@ -31,6 +41,18 @@ services:
     command: ["python", "run_tg_bot.py"]
     env_file:
       - ../.env
+    environment:
+      OUT_DIR: /data/knowledge_base
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      # OLLAMA_MODEL: "llama3.1"  # если нужно явно
     volumes:
       - ../knowledge_base:/data/knowledge_base
     restart: unless-stopped
+    networks:
+      - ragnet
+    depends_on:
+      - ollama
+
+networks:
+  ragnet:
+    driver: bridge
