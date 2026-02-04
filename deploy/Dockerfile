@@ -2,20 +2,33 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# deps for lxml / bs4 parsers
+# Predictable runtime, fewer edge-cases with logs/buffers and wheels
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=300
+
+# System deps:
+# - curl/ca-certificates: диагностика и TLS
+# - libxml2/libxslt1.1: runtime для lxml
+# - build-essential + libxml2-dev + libxslt1-dev: сборка wheels, если нет готовых
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
     build-essential \
     libxml2 \
     libxslt1.1 \
+    libxml2-dev \
+    libxslt1-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# python deps
+# Python deps (отдельным слоем для кеша)
 COPY src/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir \
-    --default-timeout=300 --retries=10 \
-    -r /app/requirements.txt
+RUN pip install --upgrade pip setuptools wheel \
+ && pip install --retries=10 -r /app/requirements.txt
 
-# app code
+# App code
 COPY src/ /app/
 
 # data output (snippets, meta, faiss index) goes to mounted volume
@@ -37,6 +50,10 @@ ENV CHUNK_OVERLAP=250
 ENV EMB_MODEL_NAME=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 ENV EMB_BATCH_SIZE=32
 
-VOLUME ["/data"]
+# Optional: where FAISS index lives (единый путь для parser и bot)
+ENV FAISS_DIR=/data/knowledge_base/faiss
+
+# One mount root; OUT_DIR/FAISS_DIR are внутри него
+VOLUME ["/data/knowledge_base"]
 
 CMD ["python", "run_daily.py"]

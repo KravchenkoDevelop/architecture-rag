@@ -35,9 +35,20 @@ MIN_SCORE = float(os.environ.get("MIN_SCORE", "0.25"))
 
 class RagBot:
     def __init__(self) -> None:
+        if not os.path.exists(FAISS_INDEX_PATH):
+            raise RuntimeError(
+                f"FAISS index not found: {FAISS_INDEX_PATH}"
+            )
+
+        if not os.path.exists(META_PATH):
+            raise RuntimeError(
+                f"Meta file not found: {META_PATH}"
+            )
+
         self.embedder = SentenceTransformer(EMB_MODEL_NAME)
         self.index = faiss.read_index(FAISS_INDEX_PATH)
         self.meta = self._load_meta()
+
 
     # ------------------------------
     # LOADERS

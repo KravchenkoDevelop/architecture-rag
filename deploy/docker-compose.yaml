@@ -32,6 +32,11 @@ services:
       - ragnet
     volumes:
       - ../ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
 
   tg-bot:
     build:

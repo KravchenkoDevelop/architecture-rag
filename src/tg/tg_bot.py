@@ -1,85 +1,30 @@
 
-from __future__ import annotations
-import uuid
-
-import logging
-from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
-
+import os
+import time
 from rag.bot import RagBot
 
-# ---------------------------------------------------
-# LOGGING
-# ---------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
-log = logging.getLogger("tg-bot")
+OUT_DIR = os.environ.get("OUT_DIR", "/data/knowledge_base")
+META_PATH = os.path.join(OUT_DIR, "snippets_meta.jsonl")
+FAISS_INDEX_PATH = os.path.join(OUT_DIR, "faiss.index")
 
-# ---------------------------------------------------
-# RAG CORE
-# ---------------------------------------------------
-rag = RagBot()
+_rag_instance: RagBot | None = None
 
-HELP_TEXT = """Я RAG-бот по строительным нормам.
+def get_rag() -> RagBot:
+    global _rag_instance
+    if _rag_instance is not None:
+        return _rag_instance
 
-Я отвечаю строго на основе внутренней базы знаний.
-Если данных нет — отвечу: "Я не знаю".
+    # ждать базу (жёстко, без “магии compose”)
+    deadline = time.time() + int(os.environ.get("KB_WAIT_SEC", "300"))
+    while time.time() < deadline:
+        if os.path.exists(META_PATH) and os.path.exists(FAISS_INDEX_PATH):
+            _rag_instance = RagBot()
+            return _rag_instance
+        time.sleep(2)
 
-Примеры вопросов:
-- Какие требования к ограждениям лестниц?
-- Когда допускается отклонение от нормы?
-- Какие условия применения указаны для пункта?
-"""
-
-# ---------------------------------------------------
-# HANDLERS
-# ---------------------------------------------------
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(HELP_TEXT)
-
-
-async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(HELP_TEXT)
-
-
-
-async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    question = (update.message.text or "").strip()
-    if not question:
-        return
-
-    await update.message.chat.send_action("typing")
-
-    try:
-        answer = rag.answer(question)
-    except Exception:
-        err_id = uuid.uuid4().hex[:8]
-        log.exception("RAG failed | err_id=%s | q=%r", err_id, question)
-        answer = f"Внутренняя ошибка обработки. Код: {err_id}"
-
-    if len(answer) > 3500:
-        answer = answer[:3500] + "\n\n[ответ сокращён]"
-
-    await update.message.reply_text(answer)
-
-
-
-# ---------------------------------------------------
-# APP BUILDER
-# ---------------------------------------------------
-def build_app(token: str) -> Application:
-    app = Application.builder().token(token).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question))
-
-    return app
+    raise RuntimeError(
+        f"Knowledge base not ready. Missing: "
+        f"{'meta ' if not os.path.exists(META_PATH) else ''}"
+        f"{'faiss ' if not os.path.exists(FAISS_INDEX_PATH) else ''}"
+        f"paths: meta={META_PATH} index={FAISS_INDEX_PATH}"
+    )
