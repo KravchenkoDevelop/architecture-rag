@@ -19,6 +19,7 @@ services:
       EMB_BATCH_SIZE: "32"
     volumes:
       - ../knowledge_base:/data/knowledge_base
+      - ../hf_cache:/data/.hf
     networks:
       - ragnet
 
@@ -26,18 +27,36 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: unless-stopped
+    command: ["serve"]
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
     ports:
       - "11434:11434"
     networks:
       - ragnet
     volumes:
-      - ../ollama:/root/.ollama
+      - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/version || exit 1"]
-      interval: 5s
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\nu='http://127.0.0.1:11434/api/version'\ntry:\n  print(urllib.request.urlopen(u, timeout=2).read())\n  raise SystemExit(0)\nexcept Exception as e:\n  raise SystemExit(1)\nPY"]
+      interval: 10s
       timeout: 3s
-      retries: 15
+      retries: 30
+      start_period: 20s
 
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - ragnet
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-lc"]
+    command: ["ollama pull ${OLLAMA_MODEL:-llama3.1}"]
+    restart: "no"
+
+    
   tg-bot:
     build:
       context: ..
@@ -49,15 +68,22 @@ services:
     environment:
       OUT_DIR: /data/knowledge_base
       OLLAMA_BASE_URL: "http://ollama:11434"
-      # OLLAMA_MODEL: "llama3.1"  # если нужно явно
+      OLLAMA_MODEL: "llama3.1"
+      KB_WAIT_SEC: "600"
     volumes:
       - ../knowledge_base:/data/knowledge_base
+      - ../hf_cache:/data/.hf
     restart: unless-stopped
     networks:
       - ragnet
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
 
 networks:
   ragnet:
     driver: bridge
+volumes:
+  ollama_data:
