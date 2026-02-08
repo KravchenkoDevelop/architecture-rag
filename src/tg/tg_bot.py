@@ -8,6 +8,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 from rag.bot import RagBot
+from rag.ollama_client import OllamaError
+
 
 log = logging.getLogger("tg-bot")
 
@@ -50,9 +52,21 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     try:
         rag = get_rag()
         a = rag.answer(q)
-    except Exception:
+
+    except RuntimeError as e:
+        # это твой _wait_kb() или другие RuntimeError
+        log.exception("KB not ready or runtime error")
+        a = f"Ошибка. База знаний не готова.\n{e}"
+
+    except Exception as e:
+        # сюда попадут OllamaError и любые ошибки rag.answer
         log.exception("RAG failed")
-        a = "Ошибка. База/LLM недоступны."
+        a = f"Ошибка. RAG/LLM недоступны.\n{type(e).__name__}: {e}"
+
+    except OllamaError as e:
+        log.exception("LLM failed")
+        a = f"Ошибка. LLM (Ollama) недоступна.\n{e}"
+
 
     await update.message.reply_text(a)
 
