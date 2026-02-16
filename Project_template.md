@@ -391,7 +391,7 @@ A:
 Выбранный вариант:
 - [ ] REPL (консоль)
 - [ ] REST API (FastAPI)
-- [ ] Telegram bot
+- [*] Telegram bot
 
 Описание запуска:
 - команда запуска:
