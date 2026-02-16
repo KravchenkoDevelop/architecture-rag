@@ -414,7 +414,7 @@ A:
 2) Q:  
    A: Я не знаю.  
 
----
-
+![alt text](image.png)
+![alt text](image-1.png)
 
 

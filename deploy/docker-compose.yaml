@@ -30,12 +30,15 @@ services:
     command: ["serve"]
     environment:
       OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
     ports:
       - "11434:11434"
     networks:
       - ragnet
     volumes:
       - ollama_data:/root/.ollama
+    mem_limit: 10g
     healthcheck:
       test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -75,6 +78,7 @@ services:
       OLLAMA_BASE_URL: "http://ollama:11434"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.1:8b}"
       KB_WAIT_SEC: "600"
+      OLLAMA_TIMEOUT_SEC: "600"
     volumes:
       - ../knowledge_base:/data/knowledge_base
       - ../hf_cache:/data/.hf

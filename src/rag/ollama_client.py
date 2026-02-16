@@ -53,7 +53,7 @@ def generate(system: str, user: str) -> str:
         if r.status_code == 200:
             data = r.json()
             return (data.get("message") or {}).get("content", "") or ""
-        details.append(f"{r.status_code} on /api/chat")
+        details.append(f"{r.status_code} on /api/chat: {r.text[:200]}")
     except Exception as e:
         details.append(f"exc on /api/chat: {type(e).__name__}")
 
@@ -70,7 +70,7 @@ def generate(system: str, user: str) -> str:
         if r.status_code == 200:
             data = r.json()
             return data.get("response", "") or ""
-        details.append(f"{r.status_code} on /api/generate")
+        details.append(f"{r.status_code} on /api/generate: {r.text[:200]}")
     except Exception as e:
         details.append(f"exc on /api/generate: {type(e).__name__}")
 
@@ -92,7 +92,7 @@ def generate(system: str, user: str) -> str:
             if choices:
                 msg = choices[0].get("message") or {}
                 return msg.get("content", "") or ""
-        details.append(f"{r.status_code} on /v1/chat/completions")
+        details.append(f"{r.status_code} on /v1/chat/completions: {r.text[:200]}")
     except Exception as e:
         details.append(f"exc on /v1/chat/completions: {type(e).__name__}")
 
