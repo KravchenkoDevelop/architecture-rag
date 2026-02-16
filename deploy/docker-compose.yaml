@@ -38,7 +38,13 @@ services:
       - ragnet
     volumes:
       - ollama_data:/root/.ollama
-    mem_limit: 10g
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
       interval: 10s
