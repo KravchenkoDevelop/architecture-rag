@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY src/requirements.txt /app/requirements.txt
+COPY src/requirements_tg.txt /app/requirements_tg.txt
+RUN pip install --no-cache-dir --default-timeout=300 --retries=10 -r /app/requirements.txt
+RUN pip install --no-cache-dir --default-timeout=300 --retries=10 -r /app/requirements_tg.txt
+
+COPY src/ /app/
+
+ENV OUT_DIR=/data/knowledge_base \
+    HF_HOME=/data/.hf \
+    TRANSFORMERS_CACHE=/data/.hf
+
+VOLUME ["/data"]
+
+CMD ["python", "run_tg_bot.py"]

@@ -1,0 +1,104 @@
+services:
+  rag-parser:
+    env_file:
+      - ../.env
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: rag-parser
+    restart: unless-stopped
+    environment:
+      OUT_DIR: /data/knowledge_base
+      INTERVAL_SEC: "86400"
+      BASE_URL: "http://sniprf.ru/snip"
+      LIMIT_PAGES: "60"
+      SLEEP_SEC: "0.4"
+      CHUNK_CHARS: "1600"
+      CHUNK_OVERLAP: "250"
+      EMB_MODEL_NAME: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+      EMB_BATCH_SIZE: "32"
+    volumes:
+      - ../knowledge_base:/data/knowledge_base
+      - ../hf_cache:/data/.hf
+    networks:
+      - ragnet
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    command: ["serve"]
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    ports:
+      - "11434:11434"
+    networks:
+      - ragnet
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - ragnet
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.1:8b}"
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      set -e;
+      ollama pull "$OLLAMA_MODEL";
+      echo ok
+    restart: "no"
+
+  tg-bot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.tg
+    container_name: rag-tg-bot
+    command: ["python", "run_tg_bot.py"]
+    env_file:
+      - ../.env
+    environment:
+      OUT_DIR: /data/knowledge_base
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.1:8b}"
+      KB_WAIT_SEC: "600"
+      OLLAMA_TIMEOUT_SEC: "600"
+    volumes:
+      - ../knowledge_base:/data/knowledge_base
+      - ../hf_cache:/data/.hf
+    restart: unless-stopped
+    networks:
+      - ragnet
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+
+networks:
+  ragnet:
+    driver: bridge
+volumes:
+  ollama_data:
