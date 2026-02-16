@@ -1,0 +1,75 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+*.local
+
+# Build / binaries
+bin/
+obj/
+out/
+dist/
+build/
+
+# Logs
+*.log
+logs/
+hf_cache/xet/logs/
+
+# Python (если есть парсер/RAG утилиты)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# RAG / LLM artifacts (КРИТИЧНО)
+hf_cache/
+knowledge_base/
+data/
+models/
+embeddings/
+vector_store/
+faiss.index
+
+# HuggingFace / transformers cache
+.cache/
+.hf/
+huggingface/
+transformers_cache/
+
+# Docker volumes / runtime data
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Windows reserved / garbage
+nul
+NUL
+
+# Large files safety
+*.bin
+*.pt
+*.onnx
+*.safetensors
+*.ckpt
+*.h5
+*.parquet
+*.arrow
+.claude
+
+
+LICENSE
